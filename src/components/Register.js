@@ -16,7 +16,7 @@ const Register = () => {
     setLoading(true);
     setSuccessMessage("");
     try {
-      const response = await axios.post(`${apiBaseUrl}/auth/register`, values);
+      const response = await axios.post("http://ec2-65-1-112-188.ap-south-1.compute.amazonaws.com:8080", values);
 
       if (response.data.status === "success") {
         setSuccessMessage(response.data.message || "Registration successful!");
