@@ -25,7 +25,7 @@ const Login = ({ onLogin }) => {
         setErrorMsg(response.data.message);
       }
     } catch (error) {
-      setErrorMsg(error.response?.data?.message || "Login failed - server unavailable");
+      setErrorMsg(error.response?.data?.message || "Login failed - server not connect server unavailable");
     } finally {
       setLoading(false);
     }
