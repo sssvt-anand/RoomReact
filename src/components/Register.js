@@ -5,6 +5,9 @@ import axios from "axios";
 
 const { Title } = Typography;
 
+// Get API URL from environment variable
+const apiBaseUrl = process.env.REACT_APP_API_BASE_URL;
+
 const Register = () => {
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
@@ -13,13 +16,12 @@ const Register = () => {
     setLoading(true);
     setSuccessMessage("");
     try {
-      const response = await axios.post("http://localhost:8080/auth/register", values);
-      console.log(response.data); // Debugging
+      const response = await axios.post(`${apiBaseUrl}/auth/register`, values);
 
       if (response.data.status === "success") {
         setSuccessMessage(response.data.message || "Registration successful!");
         message.success(response.data.message || "Registration successful!");
-        
+
         // Automatically redirect to login page after 2 seconds
         setTimeout(() => {
           window.location.href = "/login";
@@ -35,13 +37,15 @@ const Register = () => {
   };
 
   return (
-    <div style={{
-      minHeight: "100vh",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      background: "linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)"
-    }}>
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)",
+      }}
+    >
       <Card
         hoverable
         style={{
@@ -49,7 +53,7 @@ const Register = () => {
           maxWidth: 400,
           borderRadius: 15,
           boxShadow: "0 8px 32px rgba(0,0,0,0.1)",
-          border: "none"
+          border: "none",
         }}
         bodyStyle={{ padding: "40px 25px" }}
       >
@@ -93,7 +97,7 @@ const Register = () => {
               type="primary"
               htmlType="submit"
               loading={loading}
-              disabled={loading} // Disable button when loading
+              disabled={loading}
               block
               size="large"
               style={{
@@ -101,7 +105,7 @@ const Register = () => {
                 border: "none",
                 borderRadius: 8,
                 fontWeight: 600,
-                marginTop: 15
+                marginTop: 15,
               }}
             >
               {loading ? "Registering..." : "Register"}

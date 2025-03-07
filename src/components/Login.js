@@ -5,6 +5,8 @@ import axios from "axios";
 
 const { Title } = Typography;
 
+const apiBaseUrl = process.env.REACT_APP_API_BASE_URL;
+
 const Login = ({ onLogin }) => {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
@@ -13,7 +15,7 @@ const Login = ({ onLogin }) => {
     setLoading(true);
     setErrorMsg("");
     try {
-      const response = await axios.post("http://localhost:8080/auth/login", values);
+      const response = await axios.post(`${apiBaseUrl}/auth/login`, values);
 
       if (response.data.status === "success") {
         localStorage.setItem("username", values.username);
@@ -65,11 +67,21 @@ const Login = ({ onLogin }) => {
 
         <Form name="login-form" initialValues={{ remember: true }} onFinish={handleLogin} autoComplete="off">
           <Form.Item name="username" rules={[{ required: true, message: "Please input your username!" }]}>
-            <Input prefix={<UserOutlined style={{ color: "#7f8c8d" }} />} placeholder="Username" size="large" style={{ borderRadius: 8 }} />
+            <Input
+              prefix={<UserOutlined style={{ color: "#7f8c8d" }} />}
+              placeholder="Username"
+              size="large"
+              style={{ borderRadius: 8 }}
+            />
           </Form.Item>
 
           <Form.Item name="password" rules={[{ required: true, message: "Please input your password!" }]}>
-            <Input.Password prefix={<LockOutlined style={{ color: "#7f8c8d" }} />} placeholder="Password" size="large" style={{ borderRadius: 8 }} />
+            <Input.Password
+              prefix={<LockOutlined style={{ color: "#7f8c8d" }} />}
+              placeholder="Password"
+              size="large"
+              style={{ borderRadius: 8 }}
+            />
           </Form.Item>
 
           <Form.Item>

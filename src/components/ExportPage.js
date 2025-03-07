@@ -28,12 +28,23 @@ const { Content } = Layout;
 const { Title, Text } = Typography;
 const { Option } = Select;
 
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
+
+const buttonStyle = {
+  height: 120,
+  display: 'flex',
+  flexDirection: 'column',
+  justifyContent: 'center',
+  alignItems: 'center',
+  whiteSpace: 'normal'
+};
+
 const ExportPage = () => {
   const [loading, setLoading] = useState({
     monthly: false,
     yearly: false,
     "by-member": false,
-    "without-member": false
+    general: false
   });
   const [members, setMembers] = useState([]);
   const [selectedMember, setSelectedMember] = useState(null);
@@ -42,10 +53,12 @@ const ExportPage = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const membersRes = await axios.get("http://localhost:8080/api/members");
-        setMembers(membersRes.data);
+        const [membersRes, exportsRes] = await Promise.all([
+          axios.get(`${API_BASE_URL}/api/members`),
+          axios.get(`${API_BASE_URL}/api/exports/history`)
+        ]);
         
-        const exportsRes = await axios.get("http://localhost:8080/api/exports/history");
+        setMembers(membersRes.data);
         setRecentExports(exportsRes.data);
       } catch (error) {
         message.error("Failed to load initial data");
@@ -58,13 +71,13 @@ const ExportPage = () => {
     try {
       setLoading(prev => ({ ...prev, [type]: true }));
       
-      let url = `http://localhost:8080/api/exports/member/${selectedMember}`;
+      let url = `${API_BASE_URL}/api/exports/${type}`;
       if (type === "by-member") {
         if (!selectedMember) {
           message.warning("Please select a member first");
           return;
         }
-        url += `/${selectedMember}`;
+        url = `${API_BASE_URL}/api/exports/member/${selectedMember}`;
       }
 
       const response = await axios.get(url, { responseType: "blob" });
@@ -85,7 +98,6 @@ const ExportPage = () => {
       window.URL.revokeObjectURL(downloadUrl);
       document.body.removeChild(link);
       
-      // Update recent exports
       setRecentExports(prev => [{
         id: Date.now(),
         type: type.replace("-", " ").toUpperCase(),
@@ -95,7 +107,7 @@ const ExportPage = () => {
 
       message.success(`${type.replace("-", " ").toUpperCase()} report downloaded successfully`);
     } catch (error) {
-      message.error(`Failed to download ${type} report: ${error.message}`);
+      message.error(`Failed to download ${type} report: ${error.response?.data?.message || error.message}`);
     } finally {
       setLoading(prev => ({ ...prev, [type]: false }));
     }
@@ -137,153 +149,104 @@ const ExportPage = () => {
     </div>
   );
 
-  const exportOptions = [
-    {
-      key: "monthly",
-      title: "Monthly Report",
-      icon: <CalendarOutlined />,
-      description: "Export expenses grouped by month",
-      color: "#1890ff",
-      stats: "12 months available"
-    },
-    {
-      key: "yearly",
-      title: "Yearly Summary",
-      icon: <CalendarOutlined />,
-      description: "Annual expense breakdown",
-      color: "#52c41a",
-      stats: "3 years available"
-    },
-    {
-      key: "by-member",
-      title: "Member Expenses",
-      icon: <TeamOutlined />,
-      description: "Detailed expenses per member",
-      color: "#722ed1",
-      stats: `${members.length} members available`,
-      customAction: (
-        <Popover 
-          title="Member Export" 
-          content={memberExportContent}
-          trigger="click"
-          placement="bottomRight"
-        >
-          <Button
-            style={{ 
-              backgroundColor: "#722ed1",
-              borderColor: "#722ed1",
-              marginTop: 16
-            }}
-            block
-          >
-            Select Member
-          </Button>
-        </Popover>
-      )
-    },
-    {
-      key: "without-member",
-      title: "General Expenses",
-      icon: <FileExcelOutlined />,
-      description: "Expenses without member association",
-      color: "#f5222d",
-      stats: "23 entries available"
-    }
-  ];
-
   return (
     <Layout style={{ minHeight: "100vh", padding: "24px" }}>
       <Content>
-        <div style={{ marginBottom: 32 }}>
-          <Title level={3} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <DownloadOutlined /> Expense Reports
-          </Title>
-          <Text type="secondary">Download detailed expense reports in CSV format</Text>
-        </div>
+        <Title level={3}>
+          <FileExcelOutlined /> Expense Reports
+        </Title>
+        <Text type="secondary">Export expense data in CSV format for analysis</Text>
 
-        <Row gutter={[24, 24]}>
-          {exportOptions.map((option) => (
-            <Col xs={24} sm={12} lg={6} key={option.key}>
-              <Card 
-                hoverable
-                style={{ 
-                  borderLeft: `4px solid ${option.color}`,
-                  borderRadius: 8,
-                  height: "100%"
-                }}
+        <Row gutter={[24, 24]} style={{ marginTop: 24 }}>
+          <Col span={6}>
+            <Button 
+              style={buttonStyle}
+              type="primary"
+              onClick={() => handleDownload("monthly")} 
+              loading={loading.monthly}
+            >
+              <CalendarOutlined style={{ fontSize: '24px', marginBottom: 8 }} />
+              Monthly Report
+              <Text type="secondary" style={{ fontSize: 12 }}>Last 30 days</Text>
+            </Button>
+          </Col>
+
+          <Col span={6}>
+            <Button 
+              style={buttonStyle}
+              type="primary"
+              onClick={() => handleDownload("yearly")} 
+              loading={loading.yearly}
+            >
+              <HistoryOutlined style={{ fontSize: '24px', marginBottom: 8 }} />
+              Yearly Report
+              <Text type="secondary" style={{ fontSize: 12 }}>Year-to-date</Text>
+            </Button>
+          </Col>
+
+          <Col span={6}>
+            <Popover 
+              title="Member Export" 
+              content={memberExportContent} 
+              trigger="click"
+              placement="bottom"
+            >
+              <Button 
+                style={buttonStyle}
+                type="primary"
               >
-                <div style={{ display: 'flex', flexDirection: 'column', height: "100%" }}>
-                  <div style={{ marginBottom: 16 }}>
-                    <Text strong style={{ fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-                      {option.icon} {option.title}
-                    </Text>
-                    <Text type="secondary" style={{ marginTop: 8, display: 'block' }}>
-                      {option.description}
-                    </Text>
-                  </div>
-                  
-                  <Divider style={{ margin: '16px 0' }} />
-                  
-                  <div style={{ marginTop: 'auto' }}>
-                    <Statistic
-                      title="Available Data"
-                      value={option.stats}
-                      valueStyle={{ fontSize: 14 }}
-                    />
-                    {option.customAction || (
-                      <Button
-                        type="primary"
-                        icon={<DownloadOutlined />}
-                        onClick={() => handleDownload(option.key)}
-                        loading={loading[option.key]}
-                        style={{ 
-                          marginTop: 16,
-                          backgroundColor: option.color,
-                          borderColor: option.color
-                        }}
-                        block
-                      >
-                        Download CSV
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </Card>
-            </Col>
-          ))}
+                <UserOutlined style={{ fontSize: '24px', marginBottom: 8 }} />
+                Member Report
+                <Text type="secondary" style={{ fontSize: 12 }}>Individual expenses</Text>
+              </Button>
+            </Popover>
+          </Col>
+
+          <Col span={6}>
+            <Button 
+              style={buttonStyle}
+              type="primary"
+              onClick={() => handleDownload("general")} 
+              loading={loading.general}
+            >
+              <TeamOutlined style={{ fontSize: '24px', marginBottom: 8 }} />
+              General Report
+              <Text type="secondary" style={{ fontSize: 12 }}>All expenses</Text>
+            </Button>
+          </Col>
         </Row>
 
-        <Divider style={{ margin: '24px 0' }} />
+        <Divider />
 
-        <Card
-          title={
-            <span>
-              <HistoryOutlined /> Recent Exports
-            </span>
-          }
+        <Card 
+          title={<><HistoryOutlined /> Recent Exports</>}
+          style={{ marginTop: 24 }}
         >
           <Table
             columns={[
               { 
-                title: 'Report Type', 
-                dataIndex: 'type',
+                title: "Type", 
+                dataIndex: "type", 
+                key: "type",
                 render: (text) => <Text strong>{text}</Text>
               },
               { 
-                title: 'Date', 
-                dataIndex: 'date',
-                render: (date) => moment(date).format("YYYY-MM-DD HH:mm")
+                title: "Date", 
+                dataIndex: "date", 
+                key: "date", 
+                render: (text) => moment(text).format("YYYY-MM-DD HH:mm"),
+                sorter: (a, b) => new Date(a.date) - new Date(b.date)
               },
               { 
-                title: 'File Size', 
-                dataIndex: 'size',
-                align: 'right'
+                title: "Size", 
+                dataIndex: "size", 
+                key: "size",
+                sorter: (a, b) => parseFloat(a.size) - parseFloat(b.size)
               }
             ]}
             dataSource={recentExports}
             rowKey="id"
-            locale={{ emptyText: 'No recent exports' }}
-            pagination={false}
+            pagination={{ pageSize: 5 }}
           />
         </Card>
       </Content>

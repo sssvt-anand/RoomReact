@@ -1,12 +1,33 @@
-import React from 'react';
-import styled from 'styled-components';
+import React, { useEffect } from "react";
+import styled from "styled-components";
+import axios from "axios";
+
+const apiBaseUrl = process.env.REACT_APP_API_BASE_URL;
 
 const LogoutPage = () => {
+  useEffect(() => {
+    const logout = async () => {
+      try {
+        // Clear local storage
+        localStorage.removeItem("username");
+
+        // Optional: Call Logout API if needed
+        await axios.post(`${apiBaseUrl}/auth/logout`);
+
+        console.log("User logged out successfully");
+      } catch (error) {
+        console.error("Logout failed:", error);
+      }
+    };
+
+    logout();
+  }, []);
+
   return (
     <Container>
       <LogoutContainer>
         <Title>You've Successfully Logged Out</Title>
-        
+
         <ButtonGroup>
           <PrimaryButton href="/login">Return to Login</PrimaryButton>
           <SecondaryButton href="/forgot-password">Forgot Password?</SecondaryButton>
@@ -19,8 +40,7 @@ const LogoutPage = () => {
         <HelpSection>
           <div>Need Help?</div>
           <HelpLinks>
-            <a href="/contact-support">Contact Support</a> | 
-            <a href="/tutorials">View Tutorials</a>
+            <a href="/contact-support">Contact Support</a> | <a href="/tutorials">View Tutorials</a>
           </HelpLinks>
         </HelpSection>
 
@@ -32,7 +52,7 @@ const LogoutPage = () => {
   );
 };
 
-// Styled components
+// Styled Components
 const Container = styled.div`
   display: flex;
   justify-content: center;
@@ -46,7 +66,7 @@ const LogoutContainer = styled.div`
   background: white;
   padding: 40px;
   border-radius: 10px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
   max-width: 500px;
   text-align: center;
 `;
@@ -110,12 +130,12 @@ const HelpSection = styled.div`
 
 const HelpLinks = styled.div`
   margin: 15px 0;
-  
+
   a {
     color: #3498db;
     text-decoration: none;
     margin: 0 10px;
-    
+
     &:hover {
       text-decoration: underline;
     }
@@ -125,12 +145,12 @@ const HelpLinks = styled.div`
 const CreateAccount = styled.div`
   margin-top: 20px;
   color: #7f8c8d;
-  
+
   a {
     color: #3498db;
     text-decoration: none;
     font-weight: 500;
-    
+
     &:hover {
       text-decoration: underline;
     }

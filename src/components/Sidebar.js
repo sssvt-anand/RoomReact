@@ -9,24 +9,28 @@ import {
 
 const { Sider } = Layout;
 
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
+
 const Sidebar = () => {
   const navigate = useNavigate();
 
   const handleLogout = async () => {
     try {
-      const response = await fetch('http://localhost:8080/auth/logout', {
-        method: 'POST',
-        credentials: 'include' // Necessary for cookies/session
+      const response = await fetch(`${API_BASE_URL}/auth/logout`, {
+        method: "POST",
+        credentials: "include", // Necessary for cookies/session
       });
-      
+
       if (response.ok) {
         // Clear any user-related data from storage
-        localStorage.removeItem('user');
+        localStorage.removeItem("user");
         // Redirect to login page
-        navigate('/login');
+        navigate("/login");
+      } else {
+        console.error("Logout failed with status:", response.status);
       }
     } catch (error) {
-      console.error('Logout failed:', error);
+      console.error("Logout failed:", error);
     }
   };
 
@@ -42,8 +46,8 @@ const Sidebar = () => {
         <Menu.Item key="export" icon={<DownloadOutlined />}>
           <Link to="/export">Export Expenses</Link>
         </Menu.Item>
-        <Menu.Item key="logout" icon={<LogoutOutlined />}>
-        <Link to="/logout">Log Out</Link>
+        <Menu.Item key="logout" icon={<LogoutOutlined />} onClick={handleLogout}>
+          Log Out
         </Menu.Item>
       </Menu>
     </Sider>
