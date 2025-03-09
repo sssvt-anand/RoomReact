@@ -1,14 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { HashRouter as Router, Routes, Route, Navigate } from "react-router-dom"; 
 import { Layout } from "antd";
 import Sidebar from "./components/Sidebar";
 import Dashboard from "./components/Dashboard";
 import ExpenseDashboard from "./components/ExpenseDashboard";
 import Login from "./components/Login";
 import Register from "./components/Register";
-import ExportPage from "./components/ExportPage"; 
-// ✅ Ensure this doesn't have <Router> inside
-
+import ExportPage from "./components/ExportPage";
 
 const { Content } = Layout;
 
@@ -21,7 +19,7 @@ const App = () => {
   }, []);
 
   return (
-    <Router> {/* ✅ This should be the ONLY Router in the app */}
+    <Router> {/* ✅ Now using HashRouter instead of BrowserRouter */}
       <Routes>
         {!isAuthenticated ? (
           <>
