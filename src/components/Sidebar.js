@@ -16,27 +16,43 @@ const Sidebar = () => {
 
   const handleLogout = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/logout`, {
+      // Clear client storage first
+      localStorage.clear();
+      sessionStorage.clear();
+
+      // Call logout endpoint
+      await fetch(`${API_BASE_URL}/auth/logout`, {
         method: "POST",
-        credentials: "include", // Necessary for cookies/session
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "Cache-Control": "no-cache"
+        }
       });
 
-      if (response.ok) {
-        // Clear any user-related data from storage
-        localStorage.removeItem("user");
-        // Redirect to login page
-        navigate("/login");
-      } else {
-        console.error("Logout failed with status:", response.status);
-      }
+      // Clear cookies
+      document.cookie.split(";").forEach((cookie) => {
+        const [name] = cookie.split("=");
+        document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+      });
+
+      // Redirect with full page reload
+      window.location.href = "/login";
     } catch (error) {
-      console.error("Logout failed:", error);
+      console.error("Logout error:", error);
+      window.location.href = "/login";
     }
   };
 
   return (
-    <Sider collapsible>
-      <Menu theme="dark" mode="inline">
+    <Sider collapsible breakpoint="lg" collapsedWidth="0">
+      <div className="logo" />
+      <Menu
+        theme="dark"
+        mode="inline"
+        defaultSelectedKeys={["1"]}
+        style={{ height: "100%", borderRight: 0 }}
+      >
         <Menu.Item key="dashboard" icon={<PieChartOutlined />}>
           <Link to="/">Dashboard</Link>
         </Menu.Item>
@@ -44,9 +60,14 @@ const Sidebar = () => {
           <Link to="/expenses">Expenses</Link>
         </Menu.Item>
         <Menu.Item key="export" icon={<DownloadOutlined />}>
-          <Link to="/export">Export Expenses</Link>
+          <Link to="/export">Export Data</Link>
         </Menu.Item>
-        <Menu.Item key="logout" icon={<LogoutOutlined />} onClick={handleLogout}>
+        <Menu.Item 
+          key="logout" 
+          icon={<LogoutOutlined />} 
+          onClick={handleLogout}
+          style={{ marginTop: "auto" }}
+        >
           Log Out
         </Menu.Item>
       </Menu>

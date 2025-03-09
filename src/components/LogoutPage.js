@@ -1,52 +1,58 @@
 import React, { useEffect } from "react";
 import styled from "styled-components";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 const apiBaseUrl = process.env.REACT_APP_API_BASE_URL;
 
 const LogoutPage = () => {
+  const navigate = useNavigate();
+
   useEffect(() => {
-    const logout = async () => {
+    const performLogout = async () => {
       try {
-        // Clear local storage
-        localStorage.removeItem("username");
+        // Clear all client-side storage
+        localStorage.clear();
+        sessionStorage.clear();
 
-        // Optional: Call Logout API if needed
-        await axios.post(`${apiBaseUrl}/auth/logout`);
+        // Clear cookies by expiring them
+        document.cookie.split(";").forEach((cookie) => {
+          const [name] = cookie.split("=");
+          document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+        });
 
-        console.log("User logged out successfully");
+        // Call logout API
+        await axios.post(
+          `${apiBaseUrl}/auth/logout`,
+          {},
+          {
+            withCredentials: true,
+            headers: {
+              "Content-Type": "application/json",
+              "Cache-Control": "no-cache",
+            },
+          }
+        );
+
+        // Force full reload to clear application state
+        window.location.href = "/login";
       } catch (error) {
-        console.error("Logout failed:", error);
+        console.error("Logout error:", error);
+        navigate("/login");
       }
     };
 
-    logout();
-  }, []);
+    performLogout();
+  }, [navigate]);
 
   return (
     <Container>
       <LogoutContainer>
-        <Title>You've Successfully Logged Out</Title>
-
-        <ButtonGroup>
-          <PrimaryButton href="/login">Return to Login</PrimaryButton>
-          <SecondaryButton href="/forgot-password">Forgot Password?</SecondaryButton>
-        </ButtonGroup>
-
-        <SecurityTip>
-          Security Tip: For your safety, always close this browser after logging out.
-        </SecurityTip>
-
-        <HelpSection>
-          <div>Need Help?</div>
-          <HelpLinks>
-            <a href="/contact-support">Contact Support</a> | <a href="/tutorials">View Tutorials</a>
-          </HelpLinks>
-        </HelpSection>
-
-        <CreateAccount>
-          New Here? <a href="/register">Create an Account</a>
-        </CreateAccount>
+        <Title>Logging You Out...</Title>
+        <LoadingSpinner>
+          <div className="spinner"></div>
+          <p>Clearing session and redirecting to login</p>
+        </LoadingSpinner>
       </LogoutContainer>
     </Container>
   );
@@ -77,83 +83,27 @@ const Title = styled.h1`
   font-size: 24px;
 `;
 
-const ButtonGroup = styled.div`
-  display: flex;
-  gap: 15px;
-  justify-content: center;
-  margin: 25px 0;
-`;
+const LoadingSpinner = styled.div`
+  margin: 30px 0;
 
-const BaseButton = styled.a`
-  padding: 12px 25px;
-  border-radius: 6px;
-  text-decoration: none;
-  font-weight: 500;
-  transition: all 0.3s ease;
-  cursor: pointer;
-`;
-
-const PrimaryButton = styled(BaseButton)`
-  background: #3498db;
-  color: white;
-  border: 2px solid #3498db;
-
-  &:hover {
-    background: #2980b9;
-    border-color: #2980b9;
+  .spinner {
+    width: 50px;
+    height: 50px;
+    margin: 0 auto;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #3498db;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
   }
-`;
 
-const SecondaryButton = styled(BaseButton)`
-  background: none;
-  color: #3498db;
-  border: 2px solid #3498db;
-
-  &:hover {
-    background: #f0f8ff;
+  p {
+    color: #7f8c8d;
+    margin-top: 15px;
   }
-`;
 
-const SecurityTip = styled.div`
-  background: #f8f9fa;
-  padding: 15px;
-  border-radius: 6px;
-  margin: 20px 0;
-  color: #7f8c8d;
-  font-size: 14px;
-`;
-
-const HelpSection = styled.div`
-  margin: 25px 0;
-  color: #7f8c8d;
-`;
-
-const HelpLinks = styled.div`
-  margin: 15px 0;
-
-  a {
-    color: #3498db;
-    text-decoration: none;
-    margin: 0 10px;
-
-    &:hover {
-      text-decoration: underline;
-    }
-  }
-`;
-
-const CreateAccount = styled.div`
-  margin-top: 20px;
-  color: #7f8c8d;
-
-  a {
-    color: #3498db;
-    text-decoration: none;
-    font-weight: 500;
-
-    &:hover {
-      text-decoration: underline;
-    }
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
   }
 `;
 
