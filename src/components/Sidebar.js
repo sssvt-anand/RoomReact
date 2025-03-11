@@ -1,8 +1,9 @@
 import React from "react";
 import { Layout, Menu } from "antd";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { 
   PieChartOutlined, 
+  UserOutlined, 
   DownloadOutlined, 
   LogoutOutlined 
 } from "@ant-design/icons";
@@ -12,7 +13,6 @@ const { Sider } = Layout;
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
 const Sidebar = () => {
-  const navigate = useNavigate();
 
   const handleLogout = async () => {
     try {
@@ -58,6 +58,9 @@ const Sidebar = () => {
         </Menu.Item>
         <Menu.Item key="expenses" icon={<PieChartOutlined />}>
           <Link to="/expenses">Expenses</Link>
+        </Menu.Item>
+        <Menu.Item key="users" icon={<UserOutlined />}>
+          <Link to="/users">User Management</Link>
         </Menu.Item>
         <Menu.Item key="export" icon={<DownloadOutlined />}>
           <Link to="/export">Export Data</Link>

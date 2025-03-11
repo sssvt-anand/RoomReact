@@ -4,9 +4,10 @@ import { Layout } from "antd";
 import Sidebar from "./components/Sidebar";
 import Dashboard from "./components/Dashboard";
 import ExpenseDashboard from "./components/ExpenseDashboard";
+import UserManagement from "./components/UserManagement"; // ✅ Import User Management
 import Login from "./components/Login";
 import Register from "./components/Register";
-import ExportPage from "./components/ExportPage"; // ✅ Ensure this doesn't have <Router> inside
+import ExportPage from "./components/ExportPage"; 
 
 const { Content } = Layout;
 
@@ -50,6 +51,19 @@ const App = () => {
                   <Layout>
                     <Content style={{ margin: "20px" }}>
                       <ExpenseDashboard />
+                    </Content>
+                  </Layout>
+                </Layout>
+              }
+            />
+            <Route
+              path="/users"  // ✅ Added User Management route
+              element={
+                <Layout style={{ minHeight: "100vh" }}>
+                  <Sidebar />
+                  <Layout>
+                    <Content style={{ margin: "20px" }}>
+                      <UserManagement />
                     </Content>
                   </Layout>
                 </Layout>

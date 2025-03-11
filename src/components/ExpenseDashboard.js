@@ -5,6 +5,8 @@ import {
 import { PlusOutlined, UserOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import moment from 'moment';
+import { jwtDecode } from 'jwt-decode';
+import { useNavigate } from 'react-router-dom';
 
 const { Content } = Layout;
 const { Option } = Select;
@@ -12,7 +14,17 @@ const { Text } = Typography;
 
 const apiBaseUrl = process.env.REACT_APP_API_BASE_URL;
 
+// Axios request interceptor
+axios.interceptors.request.use(config => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 const ExpenseDashboard = () => {
+  const navigate = useNavigate();
   const [expenses, setExpenses] = useState([]);
   const [members, setMembers] = useState([]);
   const [memberExpenses, setMemberExpenses] = useState([]);
@@ -22,14 +34,92 @@ const ExpenseDashboard = () => {
   const [memberForm] = Form.useForm();
   const [isEditing, setIsEditing] = useState(false);
   const [currentExpenseId, setCurrentExpenseId] = useState(null);
+  const [userRole, setUserRole] = useState('USER');
 
-  // Fetch data functions
+  // Response interceptor for handling 401 errors
+  useEffect(() => {
+    const interceptor = axios.interceptors.response.use(
+      response => response,
+      error => {
+        if (error.response?.status === 401) {
+          localStorage.removeItem('token');
+          navigate('/login');
+        }
+        return Promise.reject(error);
+      }
+    );
+    return () => axios.interceptors.response.eject(interceptor);
+  }, [navigate]);
+
+  // Enhanced role extraction from JWT
+  const getRoleFromToken = (decoded) => {
+  try {
+    // Handle both singular 'role' and plural 'roles' claims
+    const roles = decoded.roles || decoded.role || [];
+    const roleValue = Array.isArray(roles) ? roles[0] : roles;
+    
+    // Handle Spring Security's GrantedAuthority object format
+    const roleString = typeof roleValue === 'object' 
+      ? roleValue.authority 
+      : roleValue;
+
+    return roleString?.replace(/^ROLE_/i, '')?.toUpperCase() || 'USER';
+  } catch (error) {
+    console.error('Role extraction error:', error);
+    return 'USER';
+  }
+};
+
+  // Authentication and data initialization
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      navigate('/login');
+      return;
+    }
+
+    try {
+      const decoded = jwtDecode(token);
+      console.log('[DEBUG] Decoded Token:', decoded);
+
+      // Check token expiration
+      if (decoded.exp && decoded.exp * 1000 < Date.now()) {
+        throw new Error('Token expired');
+      }
+
+      // Extract and set role
+      const role = getRoleFromToken(decoded);
+      console.log('[DEBUG] User Role:', role);
+      setUserRole(role || 'USER'); // Ensure fallback to USER
+
+      // Fetch initial data
+      const fetchData = async () => {
+        try {
+          await Promise.all([
+            fetchExpenses(),
+            fetchMembers(),
+            fetchMemberExpenses()
+          ]);
+        } catch (error) {
+          message.error('Failed to initialize data');
+        }
+      };
+      fetchData();
+
+    } catch (error) {
+      console.error('Authentication error:', error);
+      localStorage.removeItem('token');
+      navigate('/login');
+    }
+  }, [navigate]);
+
+  // Data fetching functions
   const fetchExpenses = useCallback(async () => {
     try {
       const response = await axios.get(`${apiBaseUrl}/api/expenses`);
       setExpenses(response.data);
-    } catch {
-      message.error('Failed to fetch expenses');
+    } catch (error) {
+      handleApiError(error, 'Failed to fetch expenses');
     }
   }, []);
 
@@ -37,8 +127,8 @@ const ExpenseDashboard = () => {
     try {
       const response = await axios.get(`${apiBaseUrl}/api/members`);
       setMembers(response.data);
-    } catch {
-      message.error('Failed to fetch members');
+    } catch (error) {
+      handleApiError(error, 'Failed to fetch members');
     }
   }, []);
 
@@ -52,68 +142,76 @@ const ExpenseDashboard = () => {
         remaining: amounts.remaining
       }));
       setMemberExpenses(formattedData);
-    } catch {
-      message.error('Failed to fetch member expenses');
+    } catch (error) {
+      handleApiError(error, 'Failed to fetch member expenses');
     }
   }, []);
 
-  useEffect(() => {
-    fetchExpenses();
-    fetchMembers();
-    fetchMemberExpenses();
-  }, [fetchExpenses, fetchMembers, fetchMemberExpenses]);
+  // Centralized error handler
+  const handleApiError = (error, defaultMessage) => {
+    if (error.response) {
+      const { status, data } = error.response;
+      if (status === 403) {
+        message.error(data.message || 'Permission denied');
+      } else {
+        message.error(data?.message || defaultMessage);
+      }
+    } else {
+      message.error(defaultMessage);
+    }
+  };
 
-  // Expense handlers
+  // Expense operations
   const handleAddExpense = async (values) => {
     try {
       await axios.post(`${apiBaseUrl}/api/expenses`, values);
-      message.success('Expense added!');
+      message.success('Expense added successfully!');
       setExpenseModalVisible(false);
       form.resetFields();
       await Promise.all([fetchExpenses(), fetchMemberExpenses()]);
-    } catch {
-      message.error('Failed to add expense');
+    } catch (error) {
+      handleApiError(error, 'Failed to add expense');
     }
   };
 
   const handleUpdateExpense = async (values) => {
     try {
       await axios.put(`${apiBaseUrl}/api/expenses/${currentExpenseId}`, values);
-      message.success('Expense updated!');
+      message.success('Expense updated successfully!');
       setExpenseModalVisible(false);
       setIsEditing(false);
       setCurrentExpenseId(null);
       form.resetFields();
       await Promise.all([fetchExpenses(), fetchMemberExpenses()]);
-    } catch {
-      message.error('Failed to update expense');
+    } catch (error) {
+      handleApiError(error, 'Failed to update expense');
     }
   };
 
   const handleDeleteExpense = async (id) => {
     try {
       await axios.delete(`${apiBaseUrl}/api/expenses/${id}`);
-      message.success('Expense deleted!');
+      message.success('Expense deleted successfully!');
       await Promise.all([fetchExpenses(), fetchMemberExpenses()]);
-    } catch {
-      message.error('Failed to delete expense');
+    } catch (error) {
+      handleApiError(error, 'Failed to delete expense');
     }
   };
 
-  // Member handler
+  // Member operations
   const handleAddMember = async (values) => {
     try {
       await axios.post(`${apiBaseUrl}/api/members`, values);
-      message.success('Member added!');
+      message.success('Member added successfully!');
       setMemberModalVisible(false);
       memberForm.resetFields();
       await fetchMembers();
-    } catch {
-      message.error('Failed to add member');
+    } catch (error) {
+      handleApiError(error, 'Failed to add member');
     }
   };
 
-  // Table columns
+  // Table columns configuration
   const columns = [
     {
       title: 'Member',
@@ -141,7 +239,7 @@ const ExpenseDashboard = () => {
     {
       title: 'Actions',
       key: 'actions',
-      render: (_, record) => (
+      render: (_, record) => userRole === 'ADMIN' && (
         <Space>
           <Button onClick={() => {
             setExpenseModalVisible(true);
@@ -166,8 +264,17 @@ const ExpenseDashboard = () => {
 
   return (
     <Layout style={{ padding: 24, minHeight: '100vh' }}>
+      <div style={{ 
+        position: 'absolute', 
+        top: 16, 
+        right: 24, 
+        color: userRole === 'ADMIN' ? '#52c41a' : '#1890ff',
+        fontWeight: 'bold'
+      }}>
+        {userRole === 'ADMIN' ? '⚡ Admin User' : '👤 Regular User'}
+      </div>
+      
       <Content>
-        {/* Member Expenses Summary */}
         <Card title="Member Balances" style={{ marginBottom: 24 }}>
           {memberExpenses.map(member => (
             <div key={member.name} style={{ 
@@ -186,7 +293,6 @@ const ExpenseDashboard = () => {
           ))}
         </Card>
 
-        {/* Action Buttons */}
         <Space style={{ marginBottom: 24 }}>
           <Button 
             type="primary" 
@@ -198,16 +304,18 @@ const ExpenseDashboard = () => {
           >
             Add Expense
           </Button>
-          <Button 
-            type="dashed" 
-            icon={<UserOutlined />}
-            onClick={() => setMemberModalVisible(true)}
-          >
-            Add Member
-          </Button>
+          
+          {userRole === 'ADMIN' && (
+            <Button 
+              type="dashed" 
+              icon={<UserOutlined />}
+              onClick={() => setMemberModalVisible(true)}
+            >
+              Add Member
+            </Button>
+          )}
         </Space>
 
-        {/* Expenses Table */}
         <Table
           columns={columns}
           dataSource={expenses}
@@ -216,10 +324,9 @@ const ExpenseDashboard = () => {
           pagination={{ pageSize: 8 }}
         />
 
-        {/* Expense Modal */}
         <Modal
           title={isEditing ? "Edit Expense" : "Add Expense"}
-          visible={isExpenseModalVisible}
+          open={isExpenseModalVisible}
           onCancel={() => setExpenseModalVisible(false)}
           footer={null}
         >
@@ -248,10 +355,9 @@ const ExpenseDashboard = () => {
           </Form>
         </Modal>
 
-        {/* Member Modal */}
         <Modal
           title="Add New Member"
-          visible={isMemberModalVisible}
+          open={isMemberModalVisible}
           onCancel={() => setMemberModalVisible(false)}
           footer={null}
         >
