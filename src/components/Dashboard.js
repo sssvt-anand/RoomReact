@@ -20,6 +20,7 @@ const Dashboard = () => {
     setError(null);
     try {
       const expensesRes = await api.get("/api/expenses");
+      
       setExpenses(expensesRes.data.slice(-5).reverse());
 
       // Removed members fetch since it's unused

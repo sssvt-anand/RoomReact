@@ -35,6 +35,10 @@ const ExpenseDashboard = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [currentExpenseId, setCurrentExpenseId] = useState(null);
   const [userRole, setUserRole] = useState('USER');
+  const [ setCurrentMemberId] = useState(null);
+  const [selectedClearMemberId, setSelectedClearMemberId] = useState(null);
+  const [isClearModalVisible, setClearModalVisible] = useState(false);
+  const [currentClearExpenseId, setCurrentClearExpenseId] = useState(null);
 
   // Response interceptor for handling 401 errors
   useEffect(() => {
@@ -53,22 +57,18 @@ const ExpenseDashboard = () => {
 
   // Enhanced role extraction from JWT
   const getRoleFromToken = (decoded) => {
-  try {
-    // Handle both singular 'role' and plural 'roles' claims
-    const roles = decoded.roles || decoded.role || [];
-    const roleValue = Array.isArray(roles) ? roles[0] : roles;
-    
-    // Handle Spring Security's GrantedAuthority object format
-    const roleString = typeof roleValue === 'object' 
-      ? roleValue.authority 
-      : roleValue;
-
-    return roleString?.replace(/^ROLE_/i, '')?.toUpperCase() || 'USER';
-  } catch (error) {
-    console.error('Role extraction error:', error);
-    return 'USER';
-  }
-};
+    try {
+      const roles = decoded.roles || decoded.role || [];
+      const roleValue = Array.isArray(roles) ? roles[0] : roles;
+      const roleString = typeof roleValue === 'object' 
+        ? roleValue.authority 
+        : roleValue;
+      return roleString?.replace(/^ROLE_/i, '')?.toUpperCase() || 'USER';
+    } catch (error) {
+      console.error('Role extraction error:', error);
+      return 'USER';
+    }
+  };
 
   // Authentication and data initialization
   useEffect(() => {
@@ -80,19 +80,15 @@ const ExpenseDashboard = () => {
 
     try {
       const decoded = jwtDecode(token);
-      console.log('[DEBUG] Decoded Token:', decoded);
-
-      // Check token expiration
+      
       if (decoded.exp && decoded.exp * 1000 < Date.now()) {
         throw new Error('Token expired');
       }
 
-      // Extract and set role
       const role = getRoleFromToken(decoded);
-      console.log('[DEBUG] User Role:', role);
-      setUserRole(role || 'USER'); // Ensure fallback to USER
+      setUserRole(role || 'USER');
+      setCurrentMemberId(decoded.memberId || decoded.sub);
 
-      // Fetch initial data
       const fetchData = async () => {
         try {
           await Promise.all([
@@ -113,7 +109,7 @@ const ExpenseDashboard = () => {
     }
   }, [navigate]);
 
-  // Data fetching functions
+  
   const fetchExpenses = useCallback(async () => {
     try {
       const response = await axios.get(`${apiBaseUrl}/api/expenses`);
@@ -146,16 +142,12 @@ const ExpenseDashboard = () => {
       handleApiError(error, 'Failed to fetch member expenses');
     }
   }, []);
-
-  // Centralized error handler
+      
+  // Error handler
   const handleApiError = (error, defaultMessage) => {
     if (error.response) {
-      const { status, data } = error.response;
-      if (status === 403) {
-        message.error(data.message || 'Permission denied');
-      } else {
-        message.error(data?.message || defaultMessage);
-      }
+      const { data } = error.response;
+      message.error(data?.message || defaultMessage);
     } else {
       message.error(defaultMessage);
     }
@@ -198,6 +190,27 @@ const ExpenseDashboard = () => {
     }
   };
 
+  // Clear expense handler
+  const handleClearExpense = async () => {
+    try {
+      if (!selectedClearMemberId) {
+        message.error('Please select a member to clear this expense');
+        return;
+      }
+      
+      await axios.put(
+        `${apiBaseUrl}/api/expenses/clear/${currentClearExpenseId}?memberId=${selectedClearMemberId}`
+      );
+      
+      message.success('Expense cleared successfully!');
+      setClearModalVisible(false);
+      setSelectedClearMemberId(null);
+      await Promise.all([fetchExpenses(), fetchMemberExpenses()]);
+    } catch (error) {
+      handleApiError(error, 'Failed to clear expense');
+    }
+  };
+
   // Member operations
   const handleAddMember = async (values) => {
     try {
@@ -237,26 +250,53 @@ const ExpenseDashboard = () => {
       render: date => moment(date).format('YYYY-MM-DD'),
     },
     {
+      title: 'Status',
+      key: 'status',
+      render: (_, record) => record.cleared ? (
+        <Text type="success">
+          Cleared by {record.clearedBy?.name} on {moment(record.clearedAt).format('YYYY-MM-DD HH:mm')}
+        </Text>
+      ) : (
+        <Text type="warning">Pending</Text>
+      ),
+    },
+    {
       title: 'Actions',
       key: 'actions',
-      render: (_, record) => userRole === 'ADMIN' && (
+      render: (_, record) => (
         <Space>
-          <Button onClick={() => {
-            setExpenseModalVisible(true);
-            setIsEditing(true);
-            setCurrentExpenseId(record.id);
-            form.setFieldsValue({
-              memberId: record.member.id,
-              description: record.description,
-              amount: record.amount,
-              date: moment(record.date)
-            });
-          }}>
-            Edit
-          </Button>
-          <Button danger onClick={() => handleDeleteExpense(record.id)}>
-            Delete
-          </Button>
+          {userRole === 'ADMIN' && (
+            <>
+              <Button onClick={() => {
+                setExpenseModalVisible(true);
+                setIsEditing(true);
+                setCurrentExpenseId(record.id);
+                form.setFieldsValue({
+                  memberId: record.member.id,
+                  description: record.description,
+                  amount: record.amount,
+                  date: moment(record.date)
+                });
+              }}>
+                Edit
+              </Button>
+              <Button danger onClick={() => handleDeleteExpense(record.id)}>
+                Delete
+              </Button>
+            </>
+          )}
+          {!record.cleared && (
+            <Button 
+              type="primary" 
+              ghost 
+              onClick={() => {
+                setCurrentClearExpenseId(record.id);
+                setClearModalVisible(true);
+              }}
+            >
+              Clear
+            </Button>
+          )}
         </Space>
       ),
     },
@@ -324,6 +364,7 @@ const ExpenseDashboard = () => {
           pagination={{ pageSize: 8 }}
         />
 
+        {/* Expense Modal */}
         <Modal
           title={isEditing ? "Edit Expense" : "Add Expense"}
           open={isExpenseModalVisible}
@@ -355,6 +396,7 @@ const ExpenseDashboard = () => {
           </Form>
         </Modal>
 
+        {/* Member Modal */}
         <Modal
           title="Add New Member"
           open={isMemberModalVisible}
@@ -365,10 +407,7 @@ const ExpenseDashboard = () => {
             <Form.Item 
               name="name" 
               label="Member Name"
-              rules={[{ 
-                required: true, 
-                message: 'Please enter member name' 
-              }]}
+              rules={[{ required: true, message: 'Please enter member name' }]}
             >
               <Input 
                 placeholder="Enter member's full name" 
@@ -383,6 +422,33 @@ const ExpenseDashboard = () => {
             >
               Create Member
             </Button>
+          </Form>
+        </Modal>
+
+        {/* Clear Expense Modal */}
+        <Modal
+          title="Clear Expense"
+          open={isClearModalVisible}
+          onCancel={() => {
+            setClearModalVisible(false);
+            setSelectedClearMemberId(null);
+          }}
+          onOk={handleClearExpense}
+          okText="Confirm Clearance"
+        >
+          <Form layout="vertical">
+            <Form.Item label="Select Clearing Member" required>
+              <Select
+                placeholder="Select member"
+                onChange={value => setSelectedClearMemberId(value)}
+              >
+                {members.map(member => (
+                  <Option key={member.id} value={member.id}>
+                    {member.name}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
           </Form>
         </Modal>
       </Content>
