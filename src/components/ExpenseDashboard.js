@@ -35,24 +35,27 @@ const ExpenseDashboard = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [currentExpenseId, setCurrentExpenseId] = useState(null);
   const [userRole, setUserRole] = useState('USER');
-  const [ setCurrentMemberId] = useState(null);
+  const [currentMemberId, setCurrentMemberId] = useState(null);
   const [selectedClearMemberId, setSelectedClearMemberId] = useState(null);
   const [isClearModalVisible, setClearModalVisible] = useState(false);
   const [currentClearExpenseId, setCurrentClearExpenseId] = useState(null);
 
+
   // Response interceptor for handling 401 errors
   useEffect(() => {
-    const interceptor = axios.interceptors.response.use(
-      response => response,
-      error => {
-        if (error.response?.status === 401) {
-          localStorage.removeItem('token');
-          navigate('/login');
-        }
-        return Promise.reject(error);
-      }
-    );
-    return () => axios.interceptors.response.eject(interceptor);
+    const token = localStorage.getItem('token');
+    if (!token) {
+      navigate('/login');
+      return;
+    }
+  
+    try {
+      const decoded = jwtDecode(token);
+      // Set member ID properly
+      setCurrentMemberId(decoded.memberId || decoded.sub); // ✅ Correct usage
+    } catch (error) {
+      // Handle errors
+    }
   }, [navigate]);
 
   // Enhanced role extraction from JWT
