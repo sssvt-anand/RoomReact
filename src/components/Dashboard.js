@@ -1,17 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { Layout, Card, Table, Statistic, Row, Col, Typography, Spin, Alert } from 'antd';
 import { DollarOutlined, TeamOutlined } from '@ant-design/icons';
-import api from '../utils/api'; // Import your custom Axios instance
+import api from '../utils/api';
 import moment from 'moment';
 
-
 const { Content } = Layout;
-const { Title, Text } = Typography;
+const { Title } = Typography;
 
 const Dashboard = () => {
   const [expenses, setExpenses] = useState([]);
   const [summary, setSummary] = useState({ total: 0, count: 0 });
-  const [memberExpenses, setMemberExpenses] = useState([]);
+  const [memberBalances, setMemberBalances] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -20,18 +19,24 @@ const Dashboard = () => {
     setError(null);
     try {
       const expensesRes = await api.get("/api/expenses");
-      
       setExpenses(expensesRes.data.slice(-5).reverse());
 
-      // Removed members fetch since it's unused
       const totalAmount = expensesRes.data.reduce((sum, expense) => sum + expense.amount, 0);
       setSummary({
         total: totalAmount,
         count: expensesRes.data.length
       });
 
-      const memberExpensesRes = await api.get("/api/expenses/summarytotal");
-      setMemberExpenses(Object.entries(memberExpensesRes.data));
+      // Fetch and format member balances
+      const balancesRes = await api.get("/api/expenses/summary");
+      const formattedBalances = Object.entries(balancesRes.data).map(([name, balances]) => ({
+        key: name,
+        name,
+        total: balances.total,
+        cleared: balances.cleared,
+        remaining: balances.remaining
+      }));
+      setMemberBalances(formattedBalances);
     } catch (error) {
       setError('Error fetching data.');
     } finally {
@@ -66,6 +71,32 @@ const Dashboard = () => {
       key: 'date',
       render: date => moment(date).format('YYYY-MM-DD')
     }
+  ];
+
+  const balanceColumns = [
+    {
+      title: 'Member',
+      dataIndex: 'name',
+      key: 'name',
+    },
+    {
+      title: 'Total',
+      dataIndex: 'total',
+      key: 'total',
+      render: value => `₹${value.toFixed(2)}`
+    },
+    {
+      title: 'Cleared',
+      dataIndex: 'cleared',
+      key: 'cleared',
+      render: value => `₹${value.toFixed(2)}`
+    },
+    {
+      title: 'Remaining',
+      dataIndex: 'remaining',
+      key: 'remaining',
+      render: value => `₹${value.toFixed(2)}`
+    },
   ];
 
   if (loading) {
@@ -128,13 +159,18 @@ const Dashboard = () => {
             </Card>
           </Col>
           <Col span={12}>
-            <Card title="Member Expenses Summary">
-              {memberExpenses.map(([name, amount]) => (
-                <div key={name} style={{ display: 'flex', justifyContent: 'space-between', padding: 8 }}>
-                  <Text>{name}</Text>
-                  <Text strong>₹{amount.toFixed(2)}</Text>
-                </div>
-              ))}
+            <Card title="Member Balances">
+              <Table
+                dataSource={memberBalances}
+                columns={balanceColumns}
+                rowKey="key"
+                pagination={false}
+                bordered
+                size="small"
+                locale={{
+                  emptyText: 'No member balances found'
+                }}
+              />
             </Card>
           </Col>
         </Row>

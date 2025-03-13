@@ -4,6 +4,7 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
 
+
 const { Option } = Select;
 const apiBaseUrl = process.env.REACT_APP_API_BASE_URL;
 
@@ -174,20 +175,20 @@ const UserManagement = () => {
     );
   }
 
-  // ✅ Render Component
+  
   return (
     <Card
-      title={
-        <div className="header-container">
-          <span>User List</span>
-          <Button 
-            type="primary" 
-            onClick={() => navigate('/dashboard')}
-            className="dashboard-button"
-          >
-            Return to Dashboard
-          </Button>
-        </div>
+    title={
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <span>User List</span>
+        <Button 
+          type="primary" 
+          onClick={() => navigate('/dashboard')}
+          style={{ marginLeft: 'auto' }}
+        >
+          Return to Dashboard
+        </Button>
+      </div>
       }
       className="user-management-card"
     >

@@ -36,3 +36,13 @@
     transform: rotate(360deg);
   }
 }
+/* In your CSS */
+.header-container {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.dashboard-button {
+  margin-left: auto;
+}

@@ -8,6 +8,7 @@ import UserManagement from "./components/UserManagement"; // ✅ Import User Man
 import Login from "./components/Login";
 import Register from "./components/Register";
 import ExportPage from "./components/ExportPage"; 
+import AdminDashboard from './components/AdminDashboard'; 
 
 const { Content } = Layout;
 
@@ -68,7 +69,21 @@ const App = () => {
                   </Layout>
                 </Layout>
               }
-            />
+            />  
+                  
+<Route
+  path="/admindashboard" 
+  element={
+    <Layout style={{ minHeight: "100vh" }}>
+      <Sidebar />
+      <Layout>
+        <Content style={{ margin: "20px" }}>
+          <AdminDashboard /> {/* Now actually using the imported component */}
+        </Content>
+      </Layout>
+    </Layout>
+  }
+/>
             <Route
               path="/export"
               element={

@@ -1,16 +1,17 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { 
-  Layout, Table, Button, Modal, Form, Input, Select, message, Card, DatePicker, Space, Typography 
+  Layout, Table, Card, Typography, Space, message,
+  Button, Form, Input, Select, DatePicker, Modal
 } from 'antd';
-import { PlusOutlined, UserOutlined } from '@ant-design/icons';
+import { PlusOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import moment from 'moment';
 import { jwtDecode } from 'jwt-decode';
 import { useNavigate } from 'react-router-dom';
 
 const { Content } = Layout;
-const { Option } = Select;
 const { Text } = Typography;
+const { Option } = Select;
 
 const apiBaseUrl = process.env.REACT_APP_API_BASE_URL;
 
@@ -29,36 +30,11 @@ const ExpenseDashboard = () => {
   const [members, setMembers] = useState([]);
   const [memberExpenses, setMemberExpenses] = useState([]);
   const [isExpenseModalVisible, setExpenseModalVisible] = useState(false);
-  const [isMemberModalVisible, setMemberModalVisible] = useState(false);
   const [form] = Form.useForm();
-  const [memberForm] = Form.useForm();
-  const [isEditing, setIsEditing] = useState(false);
-  const [currentExpenseId, setCurrentExpenseId] = useState(null);
   const [userRole, setUserRole] = useState('USER');
   const [currentMemberId, setCurrentMemberId] = useState(null);
-  const [selectedClearMemberId, setSelectedClearMemberId] = useState(null);
-  const [isClearModalVisible, setClearModalVisible] = useState(false);
-  const [currentClearExpenseId, setCurrentClearExpenseId] = useState(null);
 
-
-  // Response interceptor for handling 401 errors
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      navigate('/login');
-      return;
-    }
-  
-    try {
-      const decoded = jwtDecode(token);
-      // Set member ID properly
-      setCurrentMemberId(decoded.memberId || decoded.sub); // ✅ Correct usage
-    } catch (error) {
-      // Handle errors
-    }
-  }, [navigate]);
-
-  // Enhanced role extraction from JWT
+  // Role extraction function
   const getRoleFromToken = (decoded) => {
     try {
       const roles = decoded.roles || decoded.role || [];
@@ -70,6 +46,16 @@ const ExpenseDashboard = () => {
     } catch (error) {
       console.error('Role extraction error:', error);
       return 'USER';
+    }
+  };
+
+  // Error handler
+  const handleApiError = (error, defaultMessage) => {
+    if (error.response) {
+      const { data } = error.response;
+      message.error(data?.message || defaultMessage);
+    } else {
+      message.error(defaultMessage);
     }
   };
 
@@ -112,7 +98,7 @@ const ExpenseDashboard = () => {
     }
   }, [navigate]);
 
-  
+  // Data fetching functions
   const fetchExpenses = useCallback(async () => {
     try {
       const response = await axios.get(`${apiBaseUrl}/api/expenses`);
@@ -145,18 +131,8 @@ const ExpenseDashboard = () => {
       handleApiError(error, 'Failed to fetch member expenses');
     }
   }, []);
-      
-  // Error handler
-  const handleApiError = (error, defaultMessage) => {
-    if (error.response) {
-      const { data } = error.response;
-      message.error(data?.message || defaultMessage);
-    } else {
-      message.error(defaultMessage);
-    }
-  };
 
-  // Expense operations
+  // Add Expense handler
   const handleAddExpense = async (values) => {
     try {
       await axios.post(`${apiBaseUrl}/api/expenses`, values);
@@ -169,65 +145,7 @@ const ExpenseDashboard = () => {
     }
   };
 
-  const handleUpdateExpense = async (values) => {
-    try {
-      await axios.put(`${apiBaseUrl}/api/expenses/${currentExpenseId}`, values);
-      message.success('Expense updated successfully!');
-      setExpenseModalVisible(false);
-      setIsEditing(false);
-      setCurrentExpenseId(null);
-      form.resetFields();
-      await Promise.all([fetchExpenses(), fetchMemberExpenses()]);
-    } catch (error) {
-      handleApiError(error, 'Failed to update expense');
-    }
-  };
-
-  const handleDeleteExpense = async (id) => {
-    try {
-      await axios.delete(`${apiBaseUrl}/api/expenses/${id}`);
-      message.success('Expense deleted successfully!');
-      await Promise.all([fetchExpenses(), fetchMemberExpenses()]);
-    } catch (error) {
-      handleApiError(error, 'Failed to delete expense');
-    }
-  };
-
-  // Clear expense handler
-  const handleClearExpense = async () => {
-    try {
-      if (!selectedClearMemberId) {
-        message.error('Please select a member to clear this expense');
-        return;
-      }
-      
-      await axios.put(
-        `${apiBaseUrl}/api/expenses/clear/${currentClearExpenseId}?memberId=${selectedClearMemberId}`
-      );
-      
-      message.success('Expense cleared successfully!');
-      setClearModalVisible(false);
-      setSelectedClearMemberId(null);
-      await Promise.all([fetchExpenses(), fetchMemberExpenses()]);
-    } catch (error) {
-      handleApiError(error, 'Failed to clear expense');
-    }
-  };
-
-  // Member operations
-  const handleAddMember = async (values) => {
-    try {
-      await axios.post(`${apiBaseUrl}/api/members`, values);
-      message.success('Member added successfully!');
-      setMemberModalVisible(false);
-      memberForm.resetFields();
-      await fetchMembers();
-    } catch (error) {
-      handleApiError(error, 'Failed to add member');
-    }
-  };
-
-  // Table columns configuration
+  // Table columns
   const columns = [
     {
       title: 'Member',
@@ -255,53 +173,42 @@ const ExpenseDashboard = () => {
     {
       title: 'Status',
       key: 'status',
-      render: (_, record) => record.cleared ? (
-        <Text type="success">
-          Cleared by {record.clearedBy?.name} on {moment(record.clearedAt).format('YYYY-MM-DD HH:mm')}
-        </Text>
-      ) : (
-        <Text type="warning">Pending</Text>
-      ),
-    },
-    {
-      title: 'Actions',
-      key: 'actions',
-      render: (_, record) => (
-        <Space>
-          {userRole === 'ADMIN' && (
-            <>
-              <Button onClick={() => {
-                setExpenseModalVisible(true);
-                setIsEditing(true);
-                setCurrentExpenseId(record.id);
-                form.setFieldsValue({
-                  memberId: record.member.id,
-                  description: record.description,
-                  amount: record.amount,
-                  date: moment(record.date)
-                });
-              }}>
-                Edit
-              </Button>
-              <Button danger onClick={() => handleDeleteExpense(record.id)}>
-                Delete
-              </Button>
-            </>
-          )}
-          {!record.cleared && (
-            <Button 
-              type="primary" 
-              ghost 
-              onClick={() => {
-                setCurrentClearExpenseId(record.id);
-                setClearModalVisible(true);
-              }}
-            >
-              Clear
-            </Button>
-          )}
-        </Space>
-      ),
+      render: (_, record) => {
+        // Safely handle undefined values
+        const total = record.amount || 0;
+        const cleared = record.clearedAmount || 0;
+        const lastCleared = record.lastClearedAmount || 0;
+        const remaining = total - cleared;
+    
+        return (
+          <Space direction="vertical">
+            {record.cleared ? (
+              <Text type="success">
+                Fully Cleared: ₹{cleared.toFixed(2)}
+                <br/>
+                By {record.clearedBy?.name || 'unknown'} 
+                ({record.clearedAt ? moment(record.clearedAt).format('MMM Do') : 'N/A'})
+              </Text>
+            ) : cleared > 0 ? (
+              <>
+                <Text type="warning">
+                  Partially Cleared: ₹{cleared.toFixed(2)}/₹{total.toFixed(2)}
+                </Text>
+                <Text>
+                  Last Payment: ₹{lastCleared.toFixed(2)} 
+                  by {record.lastClearedBy?.name || 'unknown'} 
+                  ({record.lastClearedAt ? moment(record.lastClearedAt).format('MMM Do') : 'N/A'})
+                </Text>
+                <Text type="danger">
+                  Remaining: ₹{remaining.toFixed(2)}
+                </Text>
+              </>
+            ) : (
+              <Text type="secondary">Pending Clearance</Text>
+            )}
+          </Space>
+          );
+       }
     },
   ];
 
@@ -336,28 +243,17 @@ const ExpenseDashboard = () => {
           ))}
         </Card>
 
-        <Space style={{ marginBottom: 24 }}>
-          <Button 
-            type="primary" 
-            icon={<PlusOutlined />} 
-            onClick={() => {
-              setExpenseModalVisible(true);
-              form.resetFields();
-            }}
-          >
-            Add Expense
-          </Button>
-          
-          {userRole === 'ADMIN' && (
-            <Button 
-              type="dashed" 
-              icon={<UserOutlined />}
-              onClick={() => setMemberModalVisible(true)}
-            >
-              Add Member
-            </Button>
-          )}
-        </Space>
+        <Button 
+          type="primary" 
+          icon={<PlusOutlined />} 
+          onClick={() => {
+            setExpenseModalVisible(true);
+            form.resetFields();
+          }}
+          style={{ marginBottom: 16 }}
+        >
+          Add Expense
+        </Button>
 
         <Table
           columns={columns}
@@ -367,14 +263,14 @@ const ExpenseDashboard = () => {
           pagination={{ pageSize: 8 }}
         />
 
-        {/* Expense Modal */}
+        {/* Add Expense Modal */}
         <Modal
-          title={isEditing ? "Edit Expense" : "Add Expense"}
+          title="Add Expense"
           open={isExpenseModalVisible}
           onCancel={() => setExpenseModalVisible(false)}
           footer={null}
         >
-          <Form form={form} onFinish={isEditing ? handleUpdateExpense : handleAddExpense} layout="vertical">
+          <Form form={form} onFinish={handleAddExpense} layout="vertical">
             <Form.Item name="memberId" label="Member" rules={[{ required: true }]}>
               <Select placeholder="Select member">
                 {members.map(member => (
@@ -394,64 +290,8 @@ const ExpenseDashboard = () => {
               <DatePicker style={{ width: '100%' }} />
             </Form.Item>
             <Button type="primary" htmlType="submit" block>
-              {isEditing ? "Update Expense" : "Add Expense"}
+              Add Expense
             </Button>
-          </Form>
-        </Modal>
-
-        {/* Member Modal */}
-        <Modal
-          title="Add New Member"
-          open={isMemberModalVisible}
-          onCancel={() => setMemberModalVisible(false)}
-          footer={null}
-        >
-          <Form form={memberForm} onFinish={handleAddMember} layout="vertical">
-            <Form.Item 
-              name="name" 
-              label="Member Name"
-              rules={[{ required: true, message: 'Please enter member name' }]}
-            >
-              <Input 
-                placeholder="Enter member's full name" 
-                prefix={<UserOutlined />} 
-              />
-            </Form.Item>
-            <Button 
-              type="primary" 
-              htmlType="submit" 
-              block
-              icon={<PlusOutlined />}
-            >
-              Create Member
-            </Button>
-          </Form>
-        </Modal>
-
-        {/* Clear Expense Modal */}
-        <Modal
-          title="Clear Expense"
-          open={isClearModalVisible}
-          onCancel={() => {
-            setClearModalVisible(false);
-            setSelectedClearMemberId(null);
-          }}
-          onOk={handleClearExpense}
-          okText="Confirm Clearance"
-        >
-          <Form layout="vertical">
-            <Form.Item label="Select Clearing Member" required>
-              <Select
-                placeholder="Select member"
-                onChange={value => setSelectedClearMemberId(value)}
-              >
-                {members.map(member => (
-                  <Option key={member.id} value={member.id}>
-                    {member.name}
-                  </Option>
-                ))}
-              </Select>
-            </Form.Item>
           </Form>
         </Modal>
       </Content>
