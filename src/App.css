@@ -1,48 +1,50 @@
-.App {
-  text-align: center;
+/* Mobile Optimization Styles */
+.admin-container {
+  overflow-x: hidden;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+.mobile-scroll-container {
+  -webkit-overflow-scrolling: touch;
+  overflow-x: auto;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
+.ant-table.mobile-optimized-table td {
+  padding: 12px 8px !important;
+}
+
+.mobile-amount-column {
+  font-weight: bold;
+  color: #1890ff;
+}
+
+.mobile-date-column {
+  color: #666;
+}
+
+@media (max-width: 768px) {
+  .ant-btn {
+    min-height: 48px !important;
+    padding: 12px !important;
+  }
+
+  .ant-input, .ant-select-selector {
+    min-height: 48px !important;
+    font-size: 16px !important;
+  }
+
+  .ant-picker {
+    width: 100% !important;
+  }
+  
+  .header-container h2 {
+    font-size: 1.5rem;
   }
 }
 
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
-}
-
-.App-link {
-  color: #61dafb;
-}
-
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
+/* Prevent zoom on input focus */
+@media screen and (-webkit-min-device-pixel-ratio:0) {
+  input[type="number"]:focus,
+  input[type="text"]:focus {
+    font-size: 16px !important;
   }
-  to {
-    transform: rotate(360deg);
-  }
-}
-/* In your CSS */
-.header-container {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.dashboard-button {
-  margin-left: auto;
 }
