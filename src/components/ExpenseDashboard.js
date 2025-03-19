@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { 
   Layout, Table, Card, Typography, Space, message,
-  Button, Form, Input, Select, DatePicker, Modal
+  Button, Form, Input, Select, DatePicker, Modal, Spin, Alert
 } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
+import { PlusOutlined, HistoryOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import moment from 'moment';
 import { jwtDecode } from 'jwt-decode';
@@ -24,6 +24,63 @@ axios.interceptors.request.use(config => {
   return config;
 });
 
+const PaymentHistory = ({ expenseId }) => {
+  const [payments, setPayments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const fetchPayments = async () => {
+      try {
+        const response = await axios.get(`${apiBaseUrl}/api/expenses/${expenseId}/payments`);
+        setPayments(response.data);
+      } catch (err) {
+        setError('Failed to load payment history');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    if (expenseId) fetchPayments();
+  }, [expenseId]);
+
+  const columns = [
+    {
+      title: 'Date',
+      dataIndex: 'timestamp',
+      key: 'date',
+      render: text => moment(text).format('YYYY-MM-DD HH:mm'),
+      sorter: (a, b) => new Date(a.timestamp) - new Date(b.timestamp),
+    },
+    {
+      title: 'Amount',
+      dataIndex: 'amount',
+      key: 'amount',
+      render: value => `₹${value.toFixed(2)}`,
+      sorter: (a, b) => a.amount - b.amount,
+    },
+    {
+      title: 'Cleared By',
+      dataIndex: ['clearedBy', 'name'],
+      key: 'clearedBy',
+    },
+  ];
+
+  if (loading) return <Spin size="large" />;
+  if (error) return <Alert message={error} type="error" showIcon />;
+
+  return (
+    <Table
+      columns={columns}
+      dataSource={payments}
+      rowKey="id"
+      pagination={{ pageSize: 5 }}
+      bordered
+      size="small"
+    />
+  );
+};
+
 const ExpenseDashboard = () => {
   const navigate = useNavigate();
   const [expenses, setExpenses] = useState([]);
@@ -33,8 +90,9 @@ const ExpenseDashboard = () => {
   const [form] = Form.useForm();
   const [userRole, setUserRole] = useState('USER');
   const [currentMemberId, setCurrentMemberId] = useState(null);
+  const [selectedExpenseId, setSelectedExpenseId] = useState(null);
+  const [paymentHistoryVisible, setPaymentHistoryVisible] = useState(false);
 
-  // Role extraction function
   const getRoleFromToken = (decoded) => {
     try {
       const roles = decoded.roles || decoded.role || [];
@@ -49,7 +107,6 @@ const ExpenseDashboard = () => {
     }
   };
 
-  // Error handler
   const handleApiError = (error, defaultMessage) => {
     if (error.response) {
       const { data } = error.response;
@@ -59,7 +116,6 @@ const ExpenseDashboard = () => {
     }
   };
 
-  // Authentication and data initialization
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -98,7 +154,6 @@ const ExpenseDashboard = () => {
     }
   }, [navigate]);
 
-  // Data fetching functions
   const fetchExpenses = useCallback(async () => {
     try {
       const response = await axios.get(`${apiBaseUrl}/api/expenses`);
@@ -132,7 +187,6 @@ const ExpenseDashboard = () => {
     }
   }, []);
 
-  // Add Expense handler
   const handleAddExpense = async (values) => {
     try {
       await axios.post(`${apiBaseUrl}/api/expenses`, values);
@@ -145,7 +199,6 @@ const ExpenseDashboard = () => {
     }
   };
 
-  // Table columns
   const columns = [
     {
       title: 'Member',
@@ -174,41 +227,50 @@ const ExpenseDashboard = () => {
       title: 'Status',
       key: 'status',
       render: (_, record) => {
-        // Safely handle undefined values
-        const total = record.amount || 0;
-        const cleared = record.clearedAmount || 0;
-        const lastCleared = record.lastClearedAmount || 0;
-        const remaining = total - cleared;
-    
-        return (
-          <Space direction="vertical">
-            {record.cleared ? (
-              <Text type="success">
-                Fully Cleared: ₹{cleared.toFixed(2)}
-                <br/>
-                By {record.clearedBy?.name || 'unknown'} 
-                ({record.clearedAt ? moment(record.clearedAt).format('MMM Do') : 'N/A'})
-              </Text>
-            ) : cleared > 0 ? (
-              <>
-                <Text type="warning">
-                  Partially Cleared: ₹{cleared.toFixed(2)}/₹{total.toFixed(2)}
-                </Text>
-                <Text>
-                  Last Payment: ₹{lastCleared.toFixed(2)} 
-                  by {record.lastClearedBy?.name || 'unknown'} 
-                  ({record.lastClearedAt ? moment(record.lastClearedAt).format('MMM Do') : 'N/A'})
-                </Text>
-                <Text type="danger">
-                  Remaining: ₹{remaining.toFixed(2)}
-                </Text>
-              </>
-            ) : (
-              <Text type="secondary">Pending Clearance</Text>
-            )}
-          </Space>
+          const total = record.amount || 0;
+          const cleared = record.clearedAmount || 0;
+          const lastCleared = record.lastClearedAmount || 0;
+          const remaining = total - cleared;
+  
+          return (
+              <Space direction="vertical">
+                  {record.cleared ? (
+                      <Text type="success">Fully Cleared: ₹{total.toFixed(2)}</Text>
+                  ) : cleared > 0 ? (
+                      <>
+                          <Text type="warning">
+                              Partially Cleared: ₹{cleared.toFixed(2)}/₹{total.toFixed(2)}
+                          </Text>
+                          <Text>
+                              Last Payment: ₹{lastCleared.toFixed(2)} 
+                              by {record.lastClearedBy?.name || 'unknown'} 
+                              ({record.lastClearedAt ? moment(record.lastClearedAt).format('MMM Do') : 'N/A'})
+                          </Text>
+                          <Text type="danger">
+                              Remaining: ₹{remaining.toFixed(2)}
+                          </Text>
+                      </>
+                  ) : (
+                      <Text type="secondary">Pending Clearance</Text>
+                  )}
+              </Space>
           );
-       }
+      }
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      render: (_, record) => (
+        <Button 
+          icon={<HistoryOutlined />}
+          onClick={() => {
+            setSelectedExpenseId(record.id);
+            setPaymentHistoryVisible(true);
+          }}
+        >
+          History
+        </Button>
+      ),
     },
   ];
 
@@ -263,7 +325,6 @@ const ExpenseDashboard = () => {
           pagination={{ pageSize: 8 }}
         />
 
-        {/* Add Expense Modal */}
         <Modal
           title="Add Expense"
           open={isExpenseModalVisible}
@@ -293,6 +354,21 @@ const ExpenseDashboard = () => {
               Add Expense
             </Button>
           </Form>
+        </Modal>
+
+        <Modal
+          title="Payment History"
+          width={800}
+          open={paymentHistoryVisible}
+          onCancel={() => {
+            setPaymentHistoryVisible(false);
+            setSelectedExpenseId(null);
+          }}
+          footer={null}
+        >
+          {selectedExpenseId && (
+            <PaymentHistory expenseId={selectedExpenseId} />
+          )}
         </Modal>
       </Content>
     </Layout>
