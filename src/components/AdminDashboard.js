@@ -1,12 +1,13 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { 
-  Layout, Table, Button, Modal, Form, Input, Select, message, Card, DatePicker, Space, Typography 
+  Layout, Table, Button, Modal, Form, Input, Select, message, DatePicker, Space, Typography, Row, Col 
 } from 'antd';
 import { PlusOutlined, UserOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import moment from 'moment';
 import { jwtDecode } from 'jwt-decode';
 import { useNavigate } from 'react-router-dom';
+import './styles.css'; // Import custom CSS for responsive styles
 
 const { Content } = Layout;
 const { Option } = Select;
@@ -26,7 +27,6 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   const [expenses, setExpenses] = useState([]);
   const [members, setMembers] = useState([]);
-  const [memberExpenses, setMemberExpenses] = useState([]);
   const [isExpenseModalVisible, setExpenseModalVisible] = useState(false);
   const [isMemberModalVisible, setMemberModalVisible] = useState(false);
   const [form] = Form.useForm();
@@ -312,28 +312,33 @@ const AdminDashboard = () => {
       </div>
       
       <Content>
-         <Space style={{ marginBottom: 24 }}>
-          <Button 
-            type="primary" 
-            icon={<PlusOutlined />} 
-            onClick={() => {
-              setExpenseModalVisible(true);
-              form.resetFields();
-            }}
-          >
-            Add Expense
-          </Button>
-          
-          {userRole === 'ADMIN' && (
+        <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+          <Col xs={24} sm={12} md={8} lg={6}>
             <Button 
-              type="dashed" 
-              icon={<UserOutlined />}
-              onClick={() => setMemberModalVisible(true)}
+              type="primary" 
+              icon={<PlusOutlined />} 
+              onClick={() => {
+                setExpenseModalVisible(true);
+                form.resetFields();
+              }}
+              block
             >
-              Add Member
+              Add Expense
             </Button>
+          </Col>
+          {userRole === 'ADMIN' && (
+            <Col xs={24} sm={12} md={8} lg={6}>
+              <Button 
+                type="dashed" 
+                icon={<UserOutlined />}
+                onClick={() => setMemberModalVisible(true)}
+                block
+              >
+                Add Member
+              </Button>
+            </Col>
           )}
-        </Space>
+        </Row>
 
         <Table
           columns={columns}
@@ -341,6 +346,7 @@ const AdminDashboard = () => {
           rowKey="id"
           bordered
           pagination={{ pageSize: 8 }}
+          scroll={{ x: true }} // Enable horizontal scrolling for small screens
         />
 
         {/* Modals */}
