@@ -250,51 +250,51 @@ const AdminDashboard = () => {
           );
         }
       },
-    {
-      title: 'Actions',
-      key: 'actions',
-      render: (_, record) => {
-        const remaining = record.amount - (record.clearedAmount || 0);
-        const isFullyCleared = remaining <= 0;
-        
-        return (
-          <Space>
-            {userRole === 'ADMIN' && (
-              <>
-                {!isFullyCleared && (
-                  <Button onClick={() => {
-                    setExpenseModalVisible(true);
-                    setIsEditing(true);
-                    setCurrentExpenseId(record.id);
-                    form.setFieldsValue({
-                      memberId: record.member.id,
-                      description: record.description,
-                      amount: record.amount,
-                      date: moment(record.date)
-                    });
-                  }}>
-                    Edit
+      {
+        title: 'Actions',
+        key: 'actions',
+        render: (_, record) => {
+          const remaining = record.amount - (record.clearedAmount || 0);
+          const isFullyCleared = remaining <= 0;
+          
+          return (
+            <Space>
+              {userRole === 'ADMIN' && (
+                <>
+                  {!isFullyCleared && (
+                    <Button onClick={() => {
+                      setExpenseModalVisible(true);
+                      setIsEditing(true);
+                      setCurrentExpenseId(record.id);
+                      form.setFieldsValue({
+                        memberId: record.member.id,
+                        description: record.description,
+                        amount: record.amount,
+                        date: moment(record.date)
+                      });
+                    }}>
+                      Edit
+                    </Button>
+                  )}
+                  <Button danger onClick={() => handleDeleteExpense(record.id)}>
+                    Delete
                   </Button>
-                )}
-                <Button danger onClick={() => handleDeleteExpense(record.id)}>
-                  Delete
-                </Button>
-              </>
-            )}
-            {!isFullyCleared && (
-              <Button 
-                type="primary" 
-                ghost 
-                onClick={() => {
-                  setCurrentClearExpenseId(record.id);
-                  setClearModalVisible(true);
-                }}
-              >
-                {record.clearedAmount > 0 ? 'Add Payment' : 'Clear'}
-              </Button>
-            )}
-          </Space>
-        );
+                  {!isFullyCleared && (
+                    <Button 
+                      type="primary" 
+                      ghost 
+                      onClick={() => {
+                        setCurrentClearExpenseId(record.id);
+                        setClearModalVisible(true);
+                      }}
+                    >
+                      {record.clearedAmount > 0 ? 'Add Payment' : 'Clear'}
+                    </Button>
+                  )}
+                </>
+              )}
+            </Space>
+          );
       }
     },
   ];
