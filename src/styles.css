@@ -24,23 +24,3 @@
     max-width: 100%;
   }
 }
-
-/* Hide the hamburger menu on larger screens */
-@media (min-width: 992px) {
-  .mobile-menu-button {
-    display: none !important;
-  }
-}
-
-/* Ensure the sidebar takes full height on mobile */
-.ant-layout-sider {
-  min-height: 100vh;
-}
-
-/* Adjust the sidebar width for mobile */
-.ant-layout-sider-collapsed {
-  flex: 0 0 0 !important;
-  max-width: 0 !important;
-  min-width: 0 !important;
-  width: 0 !important;
-}
